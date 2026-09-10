@@ -1,18 +1,16 @@
-import { useState, useEffect } from "react";
-
-function formatClock(date) {
-  return date.toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-  });
-}
-function formatDate(date) {
-  return date.toLocaleDateString("en-US", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-  });
-}
+import { useState, useEffect, useMemo } from "react";
+import {
+  Search,
+  Plus,
+  LogIn,
+  LogOut,
+  Trash2,
+  GraduationCap,
+  Mail,
+  X,
+  Users,
+  Clock3,
+} from "lucide-react";
 
 const PROGRAMS = [
   "BS Computer Science",
@@ -28,11 +26,33 @@ const PROGRAMS = [
   "BS Medical Technology",
 ];
 
+function formatTime(date) {
+  return date.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+}
+function formatClock(date) {
+  return date.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+function formatDate(date) {
+  return date.toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  });
+}
+
 let nextRowId = 1;
 
 export default function App() {
-  const [now, setNow] = useState(new Date());
   const [students, setStudents] = useState([]);
+  const [now, setNow] = useState(new Date());
+  const [query, setQuery] = useState("");
   const [form, setForm] = useState({
     studentId: "",
     name: "",
@@ -45,6 +65,21 @@ export default function App() {
     const t = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(t);
   }, []);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return students;
+    return students.filter(
+      (s) =>
+        s.name.toLowerCase().includes(q) ||
+        s.studentId.toLowerCase().includes(q) ||
+        s.program.toLowerCase().includes(q) ||
+        s.email.toLowerCase().includes(q),
+    );
+  }, [students, query]);
+
+  const onCampusCount = students.filter((s) => s.status === "in").length;
+  const checkedOutCount = students.filter((s) => s.status === "out").length;
 
   function updateField(field, value) {
     setForm((f) => ({ ...f, [field]: value }));
@@ -62,6 +97,10 @@ export default function App() {
       setError("Fill in every field before adding a student.");
       return;
     }
+    if (!/^\S+@\S+\.\S+$/.test(email)) {
+      setError("That email address doesn't look right.");
+      return;
+    }
     if (
       students.some(
         (s) => s.studentId.toLowerCase() === studentId.toLowerCase(),
@@ -73,10 +112,52 @@ export default function App() {
 
     setStudents((prev) => [
       ...prev,
-      { rowId: nextRowId++, studentId, name, email, program },
+      {
+        rowId: nextRowId++,
+        studentId,
+        name,
+        email,
+        program,
+        timeIn: null,
+        timeOut: null,
+        status: "none",
+      },
     ]);
     setForm({ studentId: "", name: "", email: "", program: "" });
   }
+
+  function handleTimeIn(rowId) {
+    setStudents((prev) =>
+      prev.map((s) =>
+        s.rowId === rowId
+          ? {
+              ...s,
+              timeIn: formatTime(new Date()),
+              timeOut: null,
+              status: "in",
+            }
+          : s,
+      ),
+    );
+  }
+  function handleTimeOut(rowId) {
+    setStudents((prev) =>
+      prev.map((s) =>
+        s.rowId === rowId
+          ? { ...s, timeOut: formatTime(new Date()), status: "out" }
+          : s,
+      ),
+    );
+  }
+  function handleRemove(rowId) {
+    setStudents((prev) => prev.filter((s) => s.rowId !== rowId));
+  }
+
+  const statusMeta = {
+    none: { label: "Not checked in", color: "#9A7583", bar: "#E9D2DC" },
+    in: { label: "On campus", color: "#2F8F5B", bar: "#2F8F5B" },
+    out: { label: "Checked out", color: "#C2255C", bar: "#C2255C" },
+  };
 
   const labelStyle = {
     display: "block",
@@ -94,6 +175,20 @@ export default function App() {
     fontSize: 14,
     boxSizing: "border-box",
   };
+  const pillButtonStyle = (disabled, color) => ({
+    display: "flex",
+    alignItems: "center",
+    gap: 5,
+    fontSize: 12.5,
+    fontWeight: 600,
+    padding: "7px 10px",
+    borderRadius: 7,
+    border: `1px solid ${disabled ? "#EAD8DF" : color}`,
+    background: disabled ? "#F7EEF2" : "#fff",
+    color: disabled ? "#C7AEB8" : color,
+    cursor: disabled ? "not-allowed" : "pointer",
+    whiteSpace: "nowrap",
+  });
 
   return (
     <div
@@ -140,25 +235,35 @@ export default function App() {
             flexWrap: "wrap",
           }}
         >
-          {[{ label: "Registered", value: students.length }].map(
-            ({ label, value }) => (
-              <div
-                key={label}
-                style={{
-                  flex: "1 1 140px",
-                  background: "#FFFFFF",
-                  border: "1px solid #F0C9D8",
-                  borderRadius: 10,
-                  padding: "14px 16px",
-                }}
-              >
-                <div style={{ fontSize: 20, fontWeight: 700 }}>{value}</div>
+          {[
+            { label: "Registered", value: students.length, Icon: Users },
+            { label: "On campus", value: onCampusCount, Icon: LogIn },
+            { label: "Checked out", value: checkedOutCount, Icon: LogOut },
+          ].map(({ label, value, Icon }) => (
+            <div
+              key={label}
+              style={{
+                flex: "1 1 140px",
+                background: "#FFFFFF",
+                border: "1px solid #F0C9D8",
+                borderRadius: 10,
+                padding: "14px 16px",
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+              }}
+            >
+              <Icon size={18} color="#C2255C" />
+              <div>
+                <div style={{ fontSize: 20, fontWeight: 700, lineHeight: 1 }}>
+                  {value}
+                </div>
                 <div style={{ fontSize: 12.5, color: "#9A7583", marginTop: 2 }}>
                   {label}
                 </div>
               </div>
-            ),
-          )}
+            </div>
+          ))}
         </div>
 
         <div
@@ -240,14 +345,53 @@ export default function App() {
                 padding: "11px 0",
                 fontWeight: 600,
                 cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 8,
               }}
             >
-              Add to roster
+              <Plus size={16} /> Add to roster
             </button>
           </form>
 
           <div style={{ flex: "2 1 480px", minWidth: 300 }}>
-            {students.length === 0 ? (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                background: "#FFFFFF",
+                border: "1px solid #F0C9D8",
+                borderRadius: 10,
+                padding: "10px 14px",
+                marginBottom: 16,
+              }}
+            >
+              <Search size={16} color="#9A7583" />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search by name, ID, email, or program"
+                style={{
+                  border: "none",
+                  outline: "none",
+                  fontSize: 14.5,
+                  flex: 1,
+                  background: "transparent",
+                }}
+              />
+              {query && (
+                <X
+                  size={15}
+                  color="#9A7583"
+                  style={{ cursor: "pointer" }}
+                  onClick={() => setQuery("")}
+                />
+              )}
+            </div>
+
+            {filtered.length === 0 ? (
               <div
                 style={{
                   textAlign: "center",
@@ -258,7 +402,9 @@ export default function App() {
                   borderRadius: 12,
                 }}
               >
-                No students registered yet. Add one from the panel on the left.
+                {students.length === 0
+                  ? "No students registered yet. Add one from the panel on the left."
+                  : "No student matches that search."}
               </div>
             ) : (
               <div
@@ -269,44 +415,153 @@ export default function App() {
                   overflow: "hidden",
                 }}
               >
-                {students.map((s, idx) => (
-                  <div
-                    key={s.rowId}
-                    style={{
-                      padding: "16px 18px",
-                      borderTop: idx === 0 ? "none" : "1px solid #F6DEE7",
-                    }}
-                  >
+                {filtered.map((s, idx) => {
+                  const meta = statusMeta[s.status];
+                  return (
                     <div
+                      key={s.rowId}
                       style={{
                         display: "flex",
-                        gap: 8,
-                        alignItems: "baseline",
+                        alignItems: "center",
+                        gap: 16,
+                        padding: "16px 18px",
+                        borderTop: idx === 0 ? "none" : "1px solid #F6DEE7",
+                        borderLeft: `4px solid ${meta.bar}`,
                       }}
                     >
-                      <span style={{ fontSize: 16.5, fontWeight: 600 }}>
-                        {s.name}
-                      </span>
-                      <span
+                      <div style={{ minWidth: 0, flex: "1 1 200px" }}>
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "baseline",
+                            gap: 8,
+                            flexWrap: "wrap",
+                          }}
+                        >
+                          <span style={{ fontSize: 16.5, fontWeight: 600 }}>
+                            {s.name}
+                          </span>
+                          <span
+                            style={{
+                              fontSize: 12,
+                              color: "#9C1C49",
+                              background: "#FBE4EC",
+                              padding: "2px 8px",
+                              borderRadius: 20,
+                              fontWeight: 600,
+                            }}
+                          >
+                            #{s.studentId}
+                          </span>
+                        </div>
+                        <div
+                          style={{
+                            display: "flex",
+                            gap: 14,
+                            marginTop: 5,
+                            flexWrap: "wrap",
+                          }}
+                        >
+                          <span
+                            style={{
+                              fontSize: 13,
+                              color: "#9A7583",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 5,
+                            }}
+                          >
+                            <GraduationCap size={13} /> {s.program}
+                          </span>
+                          <span
+                            style={{
+                              fontSize: 13,
+                              color: "#9A7583",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 5,
+                            }}
+                          >
+                            <Mail size={13} /> {s.email}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div
                         style={{
-                          fontSize: 12,
-                          color: "#9C1C49",
-                          background: "#FBE4EC",
-                          padding: "2px 8px",
-                          borderRadius: 20,
-                          fontWeight: 600,
+                          textAlign: "right",
+                          minWidth: 128,
+                          flex: "0 0 auto",
                         }}
                       >
-                        #{s.studentId}
-                      </span>
+                        <div
+                          style={{
+                            fontSize: 12.5,
+                            fontWeight: 600,
+                            color: meta.color,
+                            marginBottom: 4,
+                          }}
+                        >
+                          {meta.label}
+                        </div>
+                        <div
+                          style={{
+                            fontSize: 12,
+                            color: "#9A7583",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 4,
+                            justifyContent: "flex-end",
+                          }}
+                        >
+                          <Clock3 size={12} />
+                          {s.timeIn ? `In ${s.timeIn}` : "—"}
+                          {s.timeOut ? ` · Out ${s.timeOut}` : ""}
+                        </div>
+                      </div>
+
+                      <div
+                        style={{ display: "flex", gap: 8, flex: "0 0 auto" }}
+                      >
+                        <button
+                          onClick={() => handleTimeIn(s.rowId)}
+                          disabled={s.status === "in"}
+                          style={pillButtonStyle(s.status === "in", "#2F8F5B")}
+                        >
+                          <LogIn size={13} /> Time In
+                        </button>
+                        <button
+                          onClick={() => handleTimeOut(s.rowId)}
+                          disabled={!s.timeIn || s.status === "out"}
+                          style={pillButtonStyle(
+                            !s.timeIn || s.status === "out",
+                            "#C2255C",
+                          )}
+                        >
+                          <LogOut size={13} /> Time Out
+                        </button>
+                        <button
+                          onClick={() => handleRemove(s.rowId)}
+                          title="Remove student"
+                          style={{
+                            border: "1px solid #F0C9D8",
+                            background: "#fff",
+                            borderRadius: 7,
+                            width: 30,
+                            height: 30,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            cursor: "pointer",
+                            color: "#9A7583",
+                          }}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
                     </div>
-                    <div
-                      style={{ fontSize: 13, color: "#9A7583", marginTop: 4 }}
-                    >
-                      {s.program} · {s.email}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
