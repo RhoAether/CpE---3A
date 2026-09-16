@@ -177,3 +177,81 @@ def delete_student():
         print("\nDeletion cancelled.")
     
     connection.close()
+
+def record_time_in():
+    """Log a student entering."""
+    print("\n========== RECORD TIME IN ==========")
+    idNumber = input("Enter ID Number: ").strip()
+
+    connection = connect_db()
+    cursor = connection.cursor()
+
+    cursor.execute("SELECT studentName FROM students WHERE idNumber = ?", (idNumber,))
+    student = cursor.fetchone()
+
+    if not student:
+        print("Error: ID not found. Please register the student first (Option 1).")
+        connection.close()
+        return
+
+    cursor.execute("SELECT log_id FROM attendance WHERE idNumber = ? AND timeOut IS NULL", (idNumber,))
+    if cursor.fetchone():
+        print(f"Error: {student['studentName']} is already timed in.")
+        connection.close()
+        return
+
+    current_time = datetime.now().strftime("%Y-%m-%d %I:%M:%S %p")
+    cursor.execute("INSERT INTO attendance (idNumber, timeIn) VALUES (?, ?)", (idNumber, current_time))
+    connection.commit()
+    connection.close()
+    
+    print(f"\nSuccess: {student['studentName']} timed in at {current_time}.")
+
+def record_time_out():
+    """Log a student leaving."""
+    print("\n========== RECORD TIME OUT ==========")
+    idNumber = input("Enter ID Number: ").strip()
+
+    connection = connect_db()
+    cursor = connection.cursor()
+
+    cursor.execute("SELECT log_id FROM attendance WHERE idNumber = ? AND timeOut IS NULL", (idNumber,))
+    active_log = cursor.fetchone()
+
+    if not active_log:
+        print("Error: No active 'Time In' record found for this ID.")
+        connection.close()
+        return
+
+    current_time = datetime.now().strftime("%Y-%m-%d %I:%M:%S %p")
+    cursor.execute("UPDATE attendance SET timeOut = ? WHERE log_id = ?", (current_time, active_log['log_id']))
+    connection.commit()
+    connection.close()
+
+    print(f"\nSuccess: Student timed out at {current_time}.")
+
+def view_attendance_logs():
+    """View all time in/out records."""
+    print("\n========== ATTENDANCE LOGS ==========")
+    connection = connect_db()
+    cursor = connection.cursor()
+    cursor.execute("""
+        SELECT a.log_id, s.studentName, a.timeIn, a.timeOut
+        FROM attendance a
+        JOIN students s ON a.idNumber = s.idNumber
+        ORDER BY a.log_id DESC
+    """)
+    logs = cursor.fetchall()
+    connection.close()
+
+    if not logs:
+        print("No attendance records found.")
+        return
+
+    for log in logs:
+        time_out_display = log['timeOut'] if log['timeOut'] else "--- Active ---"
+        print("----------------------------------------")
+        print(f"Name:     {log['studentName']}")
+        print(f"Time In:  {log['timeIn']}")
+        print(f"Time Out: {time_out_display}")
+    print("----------------------------------------")
