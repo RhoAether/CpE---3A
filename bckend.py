@@ -255,3 +255,54 @@ def view_attendance_logs():
         print(f"Time In:  {log['timeIn']}")
         print(f"Time Out: {time_out_display}")
     print("----------------------------------------")
+
+
+def show_menu():
+    print("\n========================================")
+    print("         STUDENT TRACKER SYSTEM")
+    print("========================================")
+    print("   --- STUDENT MANAGEMENT (CRUD) ---")
+    print("1. Register New Student    (Create)")
+    print("2. View All Students       (Read)")
+    print("3. Search Students         (Read)")
+    print("4. Update Student Info     (Update)")
+    print("5. Delete Student          (Delete)")
+    print("\n   --- ATTENDANCE TRACKING ---")
+    print("6. Record Time In")
+    print("7. Record Time Out")
+    print("8. View All Attendance Logs")
+    print("0. Exit")
+    print("========================================")
+
+def main():
+    create_tables()
+    print("Database Initialized successfully!")
+
+    while True:
+        show_menu()
+        choice = input("Enter your choice: ").strip()
+
+        if choice == "1":
+            create_student()
+        elif choice == "2":
+            read_all_students()
+        elif choice == "3":
+            search_students()
+        elif choice == "4":
+            update_student()
+        elif choice == "5":
+            delete_student()
+        elif choice == "6":
+            record_time_in()
+        elif choice == "7":
+            record_time_out()
+        elif choice == "8":
+            view_attendance_logs()
+        elif choice == "0":
+            print("\nExiting. Goodbye!")
+            break
+        else:
+            print("\nInvalid choice. Please try again.")
+
+if __name__ == "__main__":
+    main()
