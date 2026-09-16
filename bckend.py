@@ -36,3 +36,79 @@ def create_tables():
 
     connection.commit()
     connection.close()
+
+def create_student():
+    """[C]REATE: Register a new student."""
+    print("\n========== REGISTER NEW STUDENT ==========")
+    idNumber = input("Enter ID Number: ").strip()
+    studentName = input("Enter Student Name: ").strip()
+    program = input("Enter Program / Course: ").strip()
+
+    if not idNumber or not studentName or not program:
+        print("Error: All fields are required.")
+        return
+
+    connection = connect_db()
+    cursor = connection.cursor()
+    created_at = datetime.now().strftime("%Y-%m-%d %I:%M:%S %p")
+
+    try:
+        cursor.execute("""
+            INSERT INTO students (idNumber, studentName, program, created_at)
+            VALUES (?, ?, ?, ?)
+        """, (idNumber, studentName, program, created_at))
+        
+        connection.commit()
+        print(f"\nSuccess: Student '{studentName}' successfully registered!")
+    except sqlite3.IntegrityError:
+        print("\nError: ID Number already exists in the system.")
+    finally:
+        connection.close()
+
+def read_all_students():
+    """[R]EAD: Display all registered students."""
+    print("\n========== ALL REGISTERED STUDENTS ==========")
+    connection = connect_db()
+    cursor = connection.cursor()
+    cursor.execute("SELECT * FROM students ORDER BY idNumber")
+    students = cursor.fetchall()
+    connection.close()
+
+    if not students:
+        print("No student records found.")
+        return
+
+    for s in students:
+        print("----------------------------------------")
+        print(f"ID Number:  {s['idNumber']}")
+        print(f"Name:       {s['studentName']}")
+        print(f"Program:    {s['program']}")
+    print("----------------------------------------")
+
+def search_students():
+    """[R]EAD: Search for a specific student."""
+    print("\n========== SEARCH STUDENTS ==========")
+    keyword = input("Enter name, program, or ID keyword: ").strip()
+
+    if not keyword:
+        print("Error: Search keyword is required.")
+        return
+
+    connection = connect_db()
+    cursor = connection.cursor()
+    cursor.execute("""
+        SELECT * FROM students
+        WHERE idNumber LIKE ? OR studentName LIKE ? OR program LIKE ?
+        ORDER BY idNumber
+    """, (f"%{keyword}%", f"%{keyword}%", f"%{keyword}%"))
+    
+    students = cursor.fetchall()
+    connection.close()
+
+    if not students:
+        print("No matching students found.")
+        return
+
+    print("\nSearch Results:")
+    for s in students:
+        print(f"ID: {s['idNumber']} | Name: {s['studentName']} | Program: {s['program']}")
