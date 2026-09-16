@@ -112,3 +112,68 @@ def search_students():
     print("\nSearch Results:")
     for s in students:
         print(f"ID: {s['idNumber']} | Name: {s['studentName']} | Program: {s['program']}")
+
+
+def update_student():
+    """[U]PDATE: Modify a student's profile."""
+    print("\n========== UPDATE STUDENT INFO ==========")
+    idNumber = input("Enter ID Number to update: ").strip()
+
+    connection = connect_db()
+    cursor = connection.cursor()
+    cursor.execute("SELECT * FROM students WHERE idNumber = ?", (idNumber,))
+    student = cursor.fetchone()
+
+    if not student:
+        print("Error: Student not found.")
+        connection.close()
+        return
+
+    print("\nCurrent Information:")
+    print(f"Name:    {student['studentName']}")
+    print(f"Program: {student['program']}")
+    print("\nEnter new information (leave blank to keep current value):")
+
+    new_name = input(f"Name [{student['studentName']}]: ").strip()
+    new_program = input(f"Program [{student['program']}]: ").strip()
+
+    new_name = new_name if new_name else student['studentName']
+    new_program = new_program if new_program else student['program']
+
+    cursor.execute("""
+        UPDATE students
+        SET studentName = ?, program = ?
+        WHERE idNumber = ?
+    """, (new_name, new_program, idNumber))
+
+    connection.commit()
+    connection.close()
+    print("\nSuccess: Student profile updated!")
+
+def delete_student():
+    """[D]ELETE: Remove a student and their attendance history."""
+    print("\n========== DELETE STUDENT ==========")
+    idNumber = input("Enter ID Number to delete: ").strip()
+
+    connection = connect_db()
+    cursor = connection.cursor()
+    cursor.execute("SELECT * FROM students WHERE idNumber = ?", (idNumber,))
+    student = cursor.fetchone()
+
+    if not student:
+        print("Error: Student not found.")
+        connection.close()
+        return
+
+    print(f"\nFound: {student['studentName']} ({student['program']})")
+    print("WARNING: Deleting this student will also delete all their attendance records!")
+    confirm = input("Are you sure you want to delete? (y/n): ").strip().lower()
+
+    if confirm == 'y':
+        cursor.execute("DELETE FROM students WHERE idNumber = ?", (idNumber,))
+        connection.commit()
+        print("\nSuccess: Student and related logs deleted.")
+    else:
+        print("\nDeletion cancelled.")
+    
+    connection.close()
